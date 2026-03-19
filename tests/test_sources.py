@@ -30,8 +30,13 @@ def test_dolarapp_fetch() -> None:
 @respx.mock
 def test_western_union_fetch() -> None:
     mock_response = {
-        "product_list": [
-            {"product_name": "Money Transfer", "exchange_rate": "1471.50", "fee": "0.00"}
+        "services_groups": [
+            {
+                "service_name": "Money In Minutes",
+                "pay_groups": [
+                    {"fund_in": "CC", "fx_rate": 1469.25, "gross_fee": 20.99}
+                ],
+            }
         ]
     }
     respx.post("https://www.westernunion.com/wuconnect/prices/catalog").mock(
@@ -42,23 +47,21 @@ def test_western_union_fetch() -> None:
     rate = source.fetch()
 
     assert rate.source == "western_union"
-    assert rate.buy_rate == 1471.50
-    assert rate.sell_rate == 1471.50
+    assert rate.buy_rate == 1469.25
+    assert rate.sell_rate == 1469.25
 
 
 @respx.mock
-def test_western_union_nested_rate() -> None:
-    """Test that WU parser can find exchange_rate in nested structures."""
-    mock_response = {
-        "price_inquiry": {
-            "details": {"exchange_rate": "1475.25"},
-        }
-    }
+def test_western_union_bad_response() -> None:
+    """Test that WU parser raises ValueError on unexpected structure."""
+    mock_response = {"unexpected": "structure"}
     respx.post("https://www.westernunion.com/wuconnect/prices/catalog").mock(
         return_value=httpx.Response(200, json=mock_response)
     )
 
     source = WesternUnionSource()
-    rate = source.fetch()
-
-    assert rate.sell_rate == 1475.25
+    try:
+        source.fetch()
+        raise AssertionError("Should have raised ValueError")
+    except ValueError as exc:
+        assert "Could not extract fx_rate" in str(exc)
