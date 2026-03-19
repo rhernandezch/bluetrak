@@ -28,6 +28,27 @@ Environment variables (prefix `BLUETRAK_`):
 | `BLUETRAK_TELEGRAM_CHAT_ID` | — | Telegram chat ID |
 | `BLUETRAK_WEBHOOK_URL` | — | Generic webhook URL |
 
+## Deployment (Oracle Cloud Free Tier)
+
+Provision an Ampere A1 ARM instance (Ubuntu 22.04+), then:
+
+```bash
+# One-time setup on the VM
+bash <(curl -s https://raw.githubusercontent.com/rhernandezch/bluetrak/main/deploy/setup.sh)
+
+# Edit secrets
+sudo nano /opt/bluetrak/.env
+
+# Check it's running
+sudo journalctl -u bluetrak -f
+```
+
+To deploy updates:
+
+```bash
+bash /opt/bluetrak/deploy/deploy.sh
+```
+
 ## Development
 
 ```bash

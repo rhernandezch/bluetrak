@@ -1,0 +1,19 @@
+[Unit]
+Description=Bluetrak USD/ARS exchange rate tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bluetrak
+WorkingDirectory=/opt/bluetrak
+EnvironmentFile=/opt/bluetrak/.env
+ExecStart=/opt/bluetrak/.venv/bin/python -m bluetrak
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bluetrak
+
+[Install]
+WantedBy=multi-user.target
