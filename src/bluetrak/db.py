@@ -110,7 +110,7 @@ class Database:
             for row in rows
         ]
 
-    def get_rate_before(self, source: str, before: datetime) -> "Rate | None":
+    def get_rate_before(self, source: str, before: datetime) -> Rate | None:
         """Get the most recent rate for a source strictly before the given time.
 
         Used to compute deltas against the previous summary snapshot.

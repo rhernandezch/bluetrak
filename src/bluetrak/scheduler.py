@@ -2,7 +2,7 @@
 
 import logging
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -82,7 +82,7 @@ def send_summary(
         return
 
     logger.info("Building 12h summary")
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     since = now - timedelta(hours=12)
 
     source_names = [s.name for s in sources]

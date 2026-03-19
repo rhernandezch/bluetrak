@@ -17,9 +17,9 @@ from bluetrak.config import Settings
 from bluetrak.db import Database
 from bluetrak.models import AlertUrgency, DataMaturity, Rate
 from bluetrak.scheduler import _SummaryState, fetch_and_store
+from bluetrak.sources.base import RateSource
 
 _STATE = _SummaryState()  # shared no-op state for tests that don't care about summaries
-from bluetrak.sources.base import RateSource
 
 # ---------------------------------------------------------------------------
 # Helpers

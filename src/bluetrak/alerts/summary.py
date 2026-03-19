@@ -1,6 +1,6 @@
 """Periodic 12h rate summary message formatting."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from bluetrak.models import AlertSignal, AlertUrgency, Rate
 
