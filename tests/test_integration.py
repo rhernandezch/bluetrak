@@ -6,6 +6,7 @@ real analysis — with only HTTP calls mocked at the edges (sources, dispatch).
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -891,3 +892,29 @@ class TestDatabaseRoundTrip:
             assert exported[0]["sell_rate"] == 1450.0
         finally:
             db.close()
+
+    def test_db_usable_from_worker_thread(self, tmp_path: Path) -> None:
+        """Connection created in main thread must be usable from a worker thread.
+
+        Reproduces the APScheduler bug: fetch_and_store runs in a background
+        thread while db.connect() was called in the main thread.
+        """
+        db = _db(tmp_path)
+        errors: list[Exception] = []
+
+        def worker() -> None:
+            try:
+                db.save_rate(Rate(
+                    source="test", buy_rate=1400, sell_rate=1450,
+                    fetched_at=datetime.now(),
+                ))
+            except Exception as exc:
+                errors.append(exc)
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+
+        assert not errors, f"Cross-thread DB access failed: {errors[0]}"
+        assert db.get_latest_rates()[0].sell_rate == 1450.0
+        db.close()
