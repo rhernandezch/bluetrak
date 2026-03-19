@@ -1,0 +1,4 @@
+- Persist all prompts in `docs/PROMPTS.md`.
+- Persist all plans, in separate session docs sequentially, in `docs/plans/XX_PLAN.md`.
+- Persist all decisions, in separate session docs sequentially, in `docs/decisions/XX_DECISIONS.md`.
+- Whenever relevant, interview me in detail using the AskUserQuestion tool for any needed design decisions or missing information.
