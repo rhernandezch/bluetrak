@@ -145,7 +145,8 @@ def evaluate_alerts(
         else:
             # Legacy fallback when no DB access (shouldn't happen in practice)
             signal = AlertSignal(source=rate.source, sell_rate=rate.sell_rate)
-            if settings.sell_rate_alert_above > 0 and rate.sell_rate >= settings.sell_rate_alert_above:
+            threshold = settings.sell_rate_alert_above
+            if threshold > 0 and rate.sell_rate >= threshold:
                 signal.should_alert = True
 
         if signal.should_alert:

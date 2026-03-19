@@ -1,7 +1,7 @@
 """Domain models for exchange rate data."""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
@@ -19,12 +19,12 @@ class Rate(BaseModel):
         return f"{self.source}: buy={self.buy_rate:.2f} sell={self.sell_rate:.2f}"
 
 
-class AlertUrgency(str, Enum):
+class AlertUrgency(StrEnum):
     NORMAL = "normal"
     HIGH = "high"
 
 
-class DataMaturity(str, Enum):
+class DataMaturity(StrEnum):
     """How much historical data is available for analysis."""
 
     COLD = "cold"  # <1 day — threshold fallback only

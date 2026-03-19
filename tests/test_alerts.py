@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from bluetrak.alerts.analysis import (
     momentum_plateau,
@@ -16,7 +15,6 @@ from bluetrak.alerts.engine import _determine_maturity, evaluate_alerts
 from bluetrak.config import Settings
 from bluetrak.db import Database
 from bluetrak.models import AlertSignal, AlertUrgency, DataMaturity, Rate
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -134,8 +132,9 @@ class TestTrendResidual:
 
 class TestMomentumPlateau:
     def test_fading_momentum(self) -> None:
-        """Rates climbed then flattened."""
-        rates = np.array([100.0, 105.0, 110.0, 115.0, 115.0, 115.0])
+        """Rates climbed then flattened — using deduplicated data."""
+        # After dedup, this represents: 3 upward moves then 2 flat/down moves
+        rates = np.array([100.0, 105.0, 110.0, 115.0, 115.5, 115.0, 114.5])
         assert momentum_plateau(rates) is True
 
     def test_still_climbing(self) -> None:
@@ -260,7 +259,7 @@ class TestEvaluateAlertsEnsemble:
             rates.extend([rate] * 4)
         # Plateau for 4 days at the peak
         peak = 1400.0 + 10 * 24 * 2.0
-        for hour in range(4 * 24):
+        for _hour in range(4 * 24):
             rates.extend([peak] * 4)
         _populate_db(db, source, rates, start=start)
 
