@@ -6,7 +6,7 @@ from pathlib import Path
 
 from bluetrak.config import settings
 from bluetrak.db import Database
-from bluetrak.scheduler import create_scheduler, fetch_and_store
+from bluetrak.scheduler import _SummaryState, create_scheduler, fetch_and_store
 from bluetrak.sources import ALL_SOURCES
 
 _LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -54,7 +54,7 @@ def main() -> None:
 
     # Run one fetch immediately on startup
     logger.info("Running initial fetch...")
-    fetch_and_store(sources, db, settings)
+    fetch_and_store(sources, db, settings, _SummaryState())
 
     # Start the scheduler loop
     scheduler = create_scheduler(sources, db, settings)
