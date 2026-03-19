@@ -3,8 +3,16 @@ name: CI
 on:
   push:
     branches: ["**"]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**.txt"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "**.txt"
 
 jobs:
   lint-and-test:
