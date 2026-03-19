@@ -8,4 +8,5 @@ decisions or missing information.
   - `feat/XX` for features.
   - `fix/XX` for bug fixes.
   - `chore/XX` for chore-like changes, most of these should be dep upgrades or vulnerability patching.
+- Create a branch for each session, no matter how small. Commit after each step instead of one big change.
 - Follow the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#specification) spec.
