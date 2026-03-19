@@ -110,6 +110,54 @@ class Database:
             for row in rows
         ]
 
+    def get_hourly_rates(self, source: str, days: int) -> list[tuple[str, float]]:
+        """Get hourly-aggregated sell rates (last reading per hour) for analysis.
+
+        Returns list of (iso_timestamp, sell_rate) tuples ordered chronologically.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT fetched_at, sell_rate FROM (
+                SELECT fetched_at, sell_rate,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY strftime('%Y-%m-%d %H', fetched_at)
+                           ORDER BY fetched_at DESC
+                       ) as rn
+                FROM rates
+                WHERE source = ?
+                  AND fetched_at >= datetime('now', ?)
+            ) WHERE rn = 1
+            ORDER BY fetched_at ASC
+            """,
+            (source, f"-{days} days"),
+        ).fetchall()
+        return [(row["fetched_at"], row["sell_rate"]) for row in rows]
+
+    def count_distinct_changes(self, source: str) -> int:
+        """Count the number of times the sell_rate actually changed for a source.
+
+        Used to determine data maturity for the cold-start strategy.
+        """
+        rows = self.conn.execute(
+            """
+            SELECT sell_rate FROM rates
+            WHERE source = ?
+            ORDER BY fetched_at ASC
+            """,
+            (source,),
+        ).fetchall()
+
+        if len(rows) < 2:
+            return 0
+
+        changes = 0
+        prev = rows[0]["sell_rate"]
+        for row in rows[1:]:
+            if row["sell_rate"] != prev:
+                changes += 1
+                prev = row["sell_rate"]
+        return changes
+
     def export_json(self, limit: int = 100) -> str:
         """Export recent rates as JSON (useful for debugging)."""
         rows = self.conn.execute(

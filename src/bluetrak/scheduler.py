@@ -35,9 +35,10 @@ def fetch_and_store(sources: list[RateSource], db: Database, settings: Settings)
 
     # Evaluate alerts
     if settings.alerts_enabled:
-        alert_messages = evaluate_alerts(fetched_rates, settings)
-        for msg in alert_messages:
-            _dispatch_alert(msg, settings)
+        signals = evaluate_alerts(fetched_rates, settings, db)
+        for signal in signals:
+            if signal.should_alert:
+                _dispatch_alert(signal.format_message(), settings)
 
 
 def _dispatch_alert(message: str, settings: Settings) -> None:
