@@ -87,9 +87,13 @@ def trend_residual(
     if std == 0:
         return 0.0, 0.0
 
+    # Cap sigma to avoid nonsensical values when std is near-zero
+    # (e.g., from nearly-perfect linear fits with floating-point noise)
+    max_sigma = 100.0
+
     current_predicted = float(np.polyval(coeffs, current_t_norm))
     residual = current_rate - current_predicted
-    sigma = residual / std
+    sigma = min(residual / std, max_sigma) if residual > 0 else max(residual / std, -max_sigma)
 
     return residual, sigma
 
