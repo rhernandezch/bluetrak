@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "BLUETRAK_"}
+    model_config = {"env_prefix": "BLUETRAK_", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     # Database
     db_path: Path = Path("bluetrak.db")

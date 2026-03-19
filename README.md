@@ -102,7 +102,7 @@ cp .env.example .env
 uv run bluetrak
 ```
 
-`pydantic-settings` automatically reads `.env` from the working directory.
+`pydantic-settings` reads `.env` from the working directory (configured via `env_file` in `config.py`).
 
 ### Setting env vars for deployment (systemd)
 
