@@ -31,7 +31,7 @@ class Database:
         self._conn: sqlite3.Connection | None = None
 
     def connect(self) -> None:
-        self._conn = sqlite3.connect(str(self.db_path))
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
         logger.info("Database initialized at %s", self.db_path)
