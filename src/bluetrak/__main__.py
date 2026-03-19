@@ -1,22 +1,47 @@
 """Bluetrak entrypoint — start the scheduler and run forever."""
 
 import logging
+from datetime import datetime
+from pathlib import Path
 
 from bluetrak.config import settings
 from bluetrak.db import Database
 from bluetrak.scheduler import create_scheduler, fetch_and_store
 from bluetrak.sources import ALL_SOURCES
 
+_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format=_LOG_FORMAT,
+    datefmt=_LOG_DATE_FORMAT,
 )
 logger = logging.getLogger(__name__)
 
 
+def _setup_file_logging(log_dir: Path) -> Path:
+    """Add a WARNING+ file handler to the root logger.
+
+    Creates one log file per process run, named by start timestamp.
+    Returns the path of the log file.
+    """
+    log_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    log_file = log_dir / f"{timestamp}.log"
+
+    handler = logging.FileHandler(log_file, encoding="utf-8")
+    handler.setLevel(logging.WARNING)
+    handler.setFormatter(logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FORMAT))
+    logging.getLogger().addHandler(handler)
+
+    return log_file
+
+
 def main() -> None:
+    log_file = _setup_file_logging(Path("logs"))
     logger.info("Bluetrak starting up")
+    logger.info("Log file (WARN+): %s", log_file)
     logger.info("Database: %s", settings.db_path)
     logger.info("Fetch interval: %d minutes", settings.fetch_interval_minutes)
     logger.info("Alerts enabled: %s", settings.alerts_enabled)
