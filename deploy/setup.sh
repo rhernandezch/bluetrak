@@ -33,14 +33,7 @@ sudo -u "$SERVICE_USER" bash -c "
 
 echo "==> Creating .env file"
 if [ ! -f "$APP_DIR/.env" ]; then
-  sudo tee "$APP_DIR/.env" > /dev/null <<'ENV'
-# Bluetrak environment configuration
-# BLUETRAK_DB_PATH=/opt/bluetrak/data/bluetrak.db
-# BLUETRAK_FETCH_INTERVAL_MINUTES=15
-# BLUETRAK_SELL_RATE_ALERT_ABOVE=0
-# BLUETRAK_TELEGRAM_BOT_TOKEN=
-# BLUETRAK_TELEGRAM_CHAT_ID=
-ENV
+  sudo cp "$APP_DIR/.env.example" "$APP_DIR/.env"
   sudo chmod 600 "$APP_DIR/.env"
   sudo chown "$SERVICE_USER:$SERVICE_USER" "$APP_DIR/.env"
   echo "    Edit $APP_DIR/.env to configure alerts and other settings"
