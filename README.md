@@ -82,6 +82,18 @@ All settings are environment variables with the `BLUETRAK_` prefix. See `.env.ex
 
 Alerts are disabled when no delivery channel is configured (i.e. no Telegram token+chat or webhook URL).
 
+#### Getting a Telegram bot token and chat ID
+
+1. Open Telegram and search for **@BotFather**.
+2. Send `/newbot`, follow the prompts to name your bot, and copy the token it returns — that is `BLUETRAK_TELEGRAM_BOT_TOKEN`. It looks like `123456789:AAFxxxxxxx`.
+3. To get your chat ID, send any message to your new bot, then open this URL in a browser (replace `<TOKEN>` with your token):
+   ```
+   https://api.telegram.org/bot<TOKEN>/getUpdates
+   ```
+   Look for `"chat":{"id": ...}` in the response. That number (positive for private chats, negative for groups) is `BLUETRAK_TELEGRAM_CHAT_ID`.
+
+> **Tip:** If you want alerts sent to a group instead of a private chat, add the bot to the group and send a message in the group before calling `getUpdates`.
+
 ### Setting env vars for local development
 
 ```bash
