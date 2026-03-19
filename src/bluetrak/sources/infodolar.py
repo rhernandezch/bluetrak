@@ -41,34 +41,25 @@ class InfoDolarSource(RateSource):
     def _parse_ccl_rates(self, soup: BeautifulSoup) -> tuple[float, float]:
         """Extract CCL buy/sell rates from infodolar.com HTML.
 
-        The page has sections for different dollar types. We look for
-        the CCL (Contado Con Liquidación) section and extract its rates.
+        The page has multiple elements matching "CCL" (nav links, table rows, etc).
+        We scan all matches and use the first <tr> ancestor that contains rate values.
         """
-        # Look for the CCL row — infodolar uses table rows with rate labels
-        # Strategy: find text containing "CCL" or "Contado con Liquidación"
-        ccl_element = soup.find(string=re.compile(r"CCL|Contado con Liquidaci", re.IGNORECASE))
+        ccl_pattern = re.compile(r"CCL|Contado con Liquidaci", re.IGNORECASE)
 
-        if ccl_element is None:
-            raise ValueError(
-                "Could not find CCL section on infodolar.com. "
-                "The page structure may have changed."
-            )
+        for ccl_element in soup.find_all(string=ccl_pattern):
+            row = ccl_element.find_parent("tr")
+            if row is None:
+                continue
 
-        # Navigate up to find the containing row/card
-        container = ccl_element.find_parent(["tr", "div", "section"])
-        if container is None:
-            raise ValueError("Could not find CCL container element.")
+            rate_values = self._extract_rates_from_container(row)
+            if len(rate_values) >= 2:
+                return rate_values[0], rate_values[1]
 
-        # Extract numeric values (rates) from the container
-        rate_values = self._extract_rates_from_container(container)
-
-        if len(rate_values) < 2:
-            raise ValueError(
-                f"Expected at least 2 rate values for CCL, found {len(rate_values)}: {rate_values}"
-            )
-
-        # First value is typically buy, second is sell
-        return rate_values[0], rate_values[1]
+        raise ValueError(
+            "Could not find CCL rate row on infodolar.com — "
+            "no <tr> with CCL text and at least 2 numeric values. "
+            "The page structure may have changed."
+        )
 
     def _extract_rates_from_container(self, container: object) -> list[float]:
         """Extract numeric rate values from an HTML container."""
