@@ -16,7 +16,9 @@ import respx
 from bluetrak.config import Settings
 from bluetrak.db import Database
 from bluetrak.models import AlertUrgency, DataMaturity, Rate
-from bluetrak.scheduler import fetch_and_store
+from bluetrak.scheduler import _SummaryState, fetch_and_store
+
+_STATE = _SummaryState()  # shared no-op state for tests that don't care about summaries
 from bluetrak.sources.base import RateSource
 
 # ---------------------------------------------------------------------------
@@ -122,7 +124,7 @@ class TestFetchStoreEvaluatePipeline:
             )
             # No alert expected (1450 < 1500 threshold, cold start)
             with respx.mock:
-                fetch_and_store([source], db, settings)
+                fetch_and_store([source], db, settings, _STATE)
 
             latest = db.get_latest_rates()
             assert len(latest) == 1
@@ -144,7 +146,7 @@ class TestFetchStoreEvaluatePipeline:
                 sell_rate_alert_above=1500,
                 webhook_url="https://hooks.example.com/test",
             )
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
 
             assert webhook_route.called
             request_body = webhook_route.calls[0].request.content.decode()
@@ -167,7 +169,7 @@ class TestFetchStoreEvaluatePipeline:
                 telegram_bot_token="FAKE_TOKEN",
                 telegram_chat_id="12345",
             )
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
 
             assert tg_route.called
             request_body = tg_route.calls[0].request.content.decode()
@@ -182,7 +184,7 @@ class TestFetchStoreEvaluatePipeline:
             source = FakeSource([(1500.0, 9999.0)])
             settings = Settings(sell_rate_alert_above=1500)
             # No respx mock needed — if dispatch were attempted it would fail
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
             # Just verify it didn't crash
             assert db.get_latest_rates()[0].sell_rate == 9999.0
         finally:
@@ -206,7 +208,7 @@ class TestFetchStoreEvaluatePipeline:
                 sell_rate_alert_above=0,
                 webhook_url="https://hooks.example.com/alert",
             )
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
 
             if webhook_route.called:
                 body = webhook_route.calls[0].request.content.decode()
@@ -420,7 +422,7 @@ class TestSourceFailureResilience:
                 sell_rate_alert_above=1490,
                 webhook_url="https://hooks.example.com/test",
             )
-            fetch_and_store([bad_source, good_source], db, settings)
+            fetch_and_store([bad_source, good_source], db, settings, _STATE)
 
             latest = db.get_latest_rates()
             assert len(latest) == 1
@@ -438,7 +440,7 @@ class TestSourceFailureResilience:
                 sell_rate_alert_above=1500,
                 webhook_url="https://hooks.example.com/test",
             )
-            fetch_and_store([FailingSource(), FailingSource()], db, settings)
+            fetch_and_store([FailingSource(), FailingSource()], db, settings, _STATE)
             assert db.get_latest_rates() == []
         finally:
             db.close()
@@ -725,7 +727,7 @@ class TestFetchCycleAccumulation:
                 source = FakeSource([(1400.0 + i * 5, 1450.0 + i * 5)])
                 source.set_time(datetime.now() - timedelta(hours=10 - i))
                 with respx.mock:
-                    fetch_and_store([source], db, settings)
+                    fetch_and_store([source], db, settings, _STATE)
 
             # Should have 10 rows in DB
             rows = db.conn.execute("SELECT COUNT(*) as cnt FROM rates").fetchone()
@@ -754,14 +756,14 @@ class TestFetchCycleAccumulation:
                 sell_rate_alert_above=0,
                 webhook_url="https://hooks.example.com/test",
             )
-            fetch_and_store([on_trend_source], db, settings)
+            fetch_and_store([on_trend_source], db, settings, _STATE)
             on_trend_calls = webhook_route.call_count
 
             # Spike cycle: above trend but <5% to avoid regime change detection
             # final_rate is ~1520, so +60 is ~4% — below the 5% regime threshold
             spike = final_rate + 60
             spike_source = FakeSource([(spike - 50, spike)])
-            fetch_and_store([spike_source], db, settings)
+            fetch_and_store([spike_source], db, settings, _STATE)
             spike_calls = webhook_route.call_count
 
             # The spike cycle should have generated more dispatch calls
@@ -792,7 +794,7 @@ class TestDispatchFailureResilience:
                 webhook_url="https://hooks.example.com/broken",
             )
             # Should not raise
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
             # Rate should still be persisted
             assert db.get_latest_rates()[0].sell_rate == 1550.0
         finally:
@@ -816,7 +818,7 @@ class TestDispatchFailureResilience:
                 telegram_chat_id="123",
                 webhook_url="https://hooks.example.com/backup",
             )
-            fetch_and_store([source], db, settings)
+            fetch_and_store([source], db, settings, _STATE)
             # Webhook should still have been called despite Telegram failure
             assert webhook_route.called
         finally:
