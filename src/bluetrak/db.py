@@ -110,6 +110,30 @@ class Database:
             for row in rows
         ]
 
+    def get_rate_before(self, source: str, before: datetime) -> "Rate | None":
+        """Get the most recent rate for a source strictly before the given time.
+
+        Used to compute deltas against the previous summary snapshot.
+        """
+        row = self.conn.execute(
+            """
+            SELECT * FROM rates
+            WHERE source = ? AND fetched_at < ?
+            ORDER BY fetched_at DESC
+            LIMIT 1
+            """,
+            (source, before.isoformat()),
+        ).fetchone()
+        if row is None:
+            return None
+        return Rate(
+            source=row["source"],
+            buy_rate=row["buy_rate"],
+            sell_rate=row["sell_rate"],
+            fetched_at=datetime.fromisoformat(row["fetched_at"]),
+            raw_response=row["raw_response"],
+        )
+
     def get_hourly_rates(self, source: str, days: int) -> list[tuple[str, float]]:
         """Get hourly-aggregated sell rates (last reading per hour) for analysis.
 
