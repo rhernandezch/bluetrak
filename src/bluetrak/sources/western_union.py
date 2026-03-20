@@ -4,7 +4,6 @@ POST endpoint requiring a JSON body with sender/receiver configuration.
 The rate is the same across all payment methods — only fees differ.
 """
 
-import json
 import logging
 
 from bluetrak.models import Rate
@@ -58,7 +57,6 @@ class WesternUnionSource(RateSource):
             buy_rate=fx_rate,
             sell_rate=fx_rate,
             fetched_at=self._now(),
-            raw_response=json.dumps(data),
         )
 
     def _extract_rate(self, data: dict) -> float:  # type: ignore[type-arg]

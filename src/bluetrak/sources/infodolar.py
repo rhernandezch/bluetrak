@@ -3,7 +3,6 @@
 Requires HTML scraping since there's no public API.
 """
 
-import json
 import logging
 import re
 
@@ -32,10 +31,6 @@ class InfoDolarSource(RateSource):
             buy_rate=buy_rate,
             sell_rate=sell_rate,
             fetched_at=self._now(),
-            raw_response=json.dumps({
-                "url": INFODOLAR_URL,
-                "title": soup.title.string if soup.title else "",
-            }),
         )
 
     def _parse_ccl_rates(self, soup: BeautifulSoup) -> tuple[float, float]:

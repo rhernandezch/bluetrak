@@ -16,13 +16,17 @@ CREATE TABLE IF NOT EXISTS rates (
     source TEXT NOT NULL,
     buy_rate REAL NOT NULL,
     sell_rate REAL NOT NULL,
-    fetched_at TEXT NOT NULL,
-    raw_response TEXT DEFAULT ''
+    fetched_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_rates_source_fetched
     ON rates (source, fetched_at DESC);
 """
+
+_MIGRATIONS = [
+    # Drop raw_response column to save storage (added 2026-03-20)
+    "ALTER TABLE rates DROP COLUMN raw_response",
+]
 
 
 class Database:
@@ -34,7 +38,18 @@ class Database:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        self._run_migrations()
         logger.info("Database initialized at %s", self.db_path)
+
+    def _run_migrations(self) -> None:
+        """Run one-off migrations, skipping any that no longer apply."""
+        for sql in _MIGRATIONS:
+            try:
+                self.conn.execute(sql)
+                self.conn.commit()
+                logger.info("Migration applied: %s", sql)
+            except sqlite3.OperationalError:
+                pass  # Already applied or not applicable
 
     def close(self) -> None:
         if self._conn:
@@ -50,15 +65,14 @@ class Database:
     def save_rate(self, rate: Rate) -> None:
         self.conn.execute(
             """
-            INSERT INTO rates (source, buy_rate, sell_rate, fetched_at, raw_response)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO rates (source, buy_rate, sell_rate, fetched_at)
+            VALUES (?, ?, ?, ?)
             """,
             (
                 rate.source,
                 rate.buy_rate,
                 rate.sell_rate,
                 rate.fetched_at.isoformat(),
-                rate.raw_response,
             ),
         )
         self.conn.commit()
@@ -84,7 +98,6 @@ class Database:
                 buy_rate=row["buy_rate"],
                 sell_rate=row["sell_rate"],
                 fetched_at=datetime.fromisoformat(row["fetched_at"]),
-                raw_response=row["raw_response"],
             )
             for row in rows
         ]
@@ -105,7 +118,6 @@ class Database:
                 buy_rate=row["buy_rate"],
                 sell_rate=row["sell_rate"],
                 fetched_at=datetime.fromisoformat(row["fetched_at"]),
-                raw_response=row["raw_response"],
             )
             for row in rows
         ]
@@ -131,7 +143,6 @@ class Database:
             buy_rate=row["buy_rate"],
             sell_rate=row["sell_rate"],
             fetched_at=datetime.fromisoformat(row["fetched_at"]),
-            raw_response=row["raw_response"],
         )
 
     def get_hourly_rates(self, source: str, days: int) -> list[tuple[str, float]]:

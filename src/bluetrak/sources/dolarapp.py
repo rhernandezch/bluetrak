@@ -3,7 +3,6 @@
 Simple GET endpoint returning JSON with bid/ask rates for ARS.
 """
 
-import json
 import logging
 
 from bluetrak.models import Rate
@@ -30,5 +29,4 @@ class DolarAppSource(RateSource):
             buy_rate=float(ars_ticker["bid"]),
             sell_rate=float(ars_ticker["ask"]),
             fetched_at=self._now(),
-            raw_response=json.dumps(data),
         )
