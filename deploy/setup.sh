@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup script for a Google Cloud e2 VM (Ubuntu 22.04+, x86_64).
+# Safe to re-run — each step checks whether it has already been completed.
+#
 # Run as a user with sudo access:
 #   bash setup.sh
 
@@ -9,30 +11,35 @@ REPO_URL="git@github.com:rhernandezch/bluetrak.git"
 APP_DIR="$HOME/bluetrak"
 DEPLOY_KEY="$HOME/.ssh/bluetrak_deploy"
 
-echo "==> Installing system dependencies"
-sudo apt-get update -q
-sudo apt-get install -y -q curl git
+# ── System dependencies ────────────────────────────────────────────────────
+if ! command -v curl &>/dev/null || ! command -v git &>/dev/null; then
+  echo "==> Installing system dependencies"
+  sudo apt-get update -q
+  sudo apt-get install -y -q curl git
+else
+  echo "==> System dependencies already installed, skipping"
+fi
 
-echo "==> Installing Docker"
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker "$USER"
-echo "    Docker installed. NOTE: group membership takes effect in new shells."
+# ── Docker ─────────────────────────────────────────────────────────────────
+if ! command -v docker &>/dev/null; then
+  echo "==> Installing Docker"
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker "$USER"
+  echo "    Docker installed. NOTE: group membership takes effect in new shells."
+else
+  echo "==> Docker already installed, skipping"
+fi
 
-echo "==> Setting up GitHub deploy key"
+# ── GitHub deploy key ──────────────────────────────────────────────────────
 if [ ! -f "$DEPLOY_KEY" ]; then
+  echo "==> Generating GitHub deploy key"
+  mkdir -p "$HOME/.ssh"
   ssh-keygen -t ed25519 -C "bluetrak-deploy" -f "$DEPLOY_KEY" -N ""
 fi
 
-echo ""
-echo "    Add the following public key as a Deploy Key on GitHub:"
-echo "    https://github.com/rhernandezch/bluetrak/settings/keys/new"
-echo "    (Title: bluetrak-vm, Allow write access: NO)"
-echo ""
-cat "${DEPLOY_KEY}.pub"
-echo ""
-read -rp "    Press Enter once the key has been added to GitHub... "
-
-cat >> "$HOME/.ssh/config" <<SSH_CONFIG
+if ! grep -q "bluetrak_deploy" "$HOME/.ssh/config" 2>/dev/null; then
+  echo "==> Configuring SSH for GitHub"
+  cat >> "$HOME/.ssh/config" <<SSH_CONFIG
 
 Host github.com
   HostName github.com
@@ -40,19 +47,37 @@ Host github.com
   IdentityFile $DEPLOY_KEY
   StrictHostKeyChecking accept-new
 SSH_CONFIG
-
-echo "==> Cloning repository"
-git clone "$REPO_URL" "$APP_DIR"
-
-echo "==> Creating .env file"
-if [ ! -f "$APP_DIR/.env" ]; then
-  cp "$APP_DIR/.env.example" "$APP_DIR/.env"
-  echo "    Edit $APP_DIR/.env to configure Telegram and other settings"
-  echo "    Then run: cd $APP_DIR && docker compose up -d --build"
 else
-  echo "==> Starting service"
-  cd "$APP_DIR"
-  sg docker "docker compose up -d --build"
+  echo "==> SSH config for GitHub already present, skipping"
+fi
+
+# Test connectivity; if it fails the key hasn't been added to GitHub yet
+if ! ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+  echo ""
+  echo "    Add the following public key as a Deploy Key on GitHub:"
+  echo "    https://github.com/rhernandezch/bluetrak/settings/keys/new"
+  echo "    (Title: bluetrak-vm, Allow write access: NO)"
+  echo ""
+  cat "${DEPLOY_KEY}.pub"
+  echo ""
+  read -rp "    Press Enter once the key has been added to GitHub... "
+fi
+
+# ── Clone repository ──────────────────────────────────────────────────────
+if [ ! -d "$APP_DIR/.git" ]; then
+  echo "==> Cloning repository"
+  git clone "$REPO_URL" "$APP_DIR"
+else
+  echo "==> Repository already cloned, pulling latest"
+  git -C "$APP_DIR" pull origin main
+fi
+
+# ── Environment file ─────────────────────────────────────────────────────
+if [ ! -f "$APP_DIR/.env" ]; then
+  echo "==> Creating .env file from template"
+  cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+else
+  echo "==> .env file already exists, skipping"
 fi
 
 echo ""
