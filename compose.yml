@@ -1,0 +1,10 @@
+services:
+  bluetrak:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - bluetrak-data:/app/data
+
+volumes:
+  bluetrak-data:

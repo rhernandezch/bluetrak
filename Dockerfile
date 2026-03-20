@@ -1,16 +1,13 @@
-FROM python:3.13-slim
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
 
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
+# Install dependencies in a cached layer — only re-runs when lockfile changes
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-install-project --no-dev
 
+# Copy source and complete the install
 COPY src/ src/
+RUN uv sync --frozen --no-dev
 
-ENV BLUETRAK_DB_PATH=/data/bluetrak.db
-
-VOLUME /data
-
-CMD ["uv", "run", "bluetrak"]
+CMD ["uv", "run", "--no-sync", "bluetrak"]
