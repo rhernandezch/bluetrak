@@ -5,9 +5,10 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/rhernandezch/bluetrak.git"
+REPO_URL="git@github.com:rhernandezch/bluetrak.git"
 APP_DIR="/opt/bluetrak"
 SERVICE_USER="bluetrak"
+DEPLOY_KEY="/root/.ssh/bluetrak_deploy"
 
 echo "==> Installing system dependencies"
 sudo apt-get update -q
@@ -16,6 +17,32 @@ sudo apt-get install -y -q curl git
 echo "==> Installing uv"
 curl -LsSf https://astral.sh/uv/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
+
+echo "==> Setting up GitHub deploy key"
+if [ ! -f "$DEPLOY_KEY" ]; then
+  sudo ssh-keygen -t ed25519 -C "bluetrak-deploy" -f "$DEPLOY_KEY" -N ""
+  sudo chmod 600 "$DEPLOY_KEY"
+fi
+
+echo ""
+echo "    Add the following public key as a Deploy Key on GitHub:"
+echo "    https://github.com/rhernandezch/bluetrak/settings/keys/new"
+echo "    (Title: bluetrak-vm, Allow write access: NO)"
+echo ""
+sudo cat "${DEPLOY_KEY}.pub"
+echo ""
+read -rp "    Press Enter once the key has been added to GitHub... "
+
+# Configure SSH for root to use the deploy key for github.com
+sudo mkdir -p /root/.ssh
+sudo tee /root/.ssh/config > /dev/null <<'SSH_CONFIG'
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile /root/.ssh/bluetrak_deploy
+  StrictHostKeyChecking accept-new
+SSH_CONFIG
+sudo chmod 600 /root/.ssh/config
 
 echo "==> Creating service user"
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin "$SERVICE_USER" || true
