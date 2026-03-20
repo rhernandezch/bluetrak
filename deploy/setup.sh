@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup script for an Oracle Cloud ARM VM (Ubuntu 22.04+).
+# One-time setup script for a Google Cloud e2 VM (Ubuntu 22.04+, x86_64).
 # Run as a user with sudo access:
 #   bash setup.sh
 

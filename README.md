@@ -115,9 +115,20 @@ sudo systemctl restart bluetrak
 
 The `.env` file should be readable only by the service user (`chmod 600`, owned by `bluetrak`). The setup script handles this automatically.
 
-## Deployment (Oracle Cloud Free Tier)
+## Deployment (Google Cloud e2)
 
-Provision an Ampere A1 ARM instance (Ubuntu 22.04+), then:
+Provision an e2 instance (Ubuntu 22.04+, x86_64) via the GCP Console or `gcloud`:
+
+```bash
+gcloud compute instances create bluetrak \
+  --machine-type=e2-micro \
+  --image-family=ubuntu-2204-lts \
+  --image-project=ubuntu-os-cloud \
+  --zone=us-central1-a \
+  --tags=bluetrak
+```
+
+Then SSH in and run the one-time setup:
 
 ```bash
 # One-time setup on the VM

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploy latest changes from main.
-# Run on the Oracle VM: bash /opt/bluetrak/deploy/deploy.sh
+# Run on the GCP VM: bash /opt/bluetrak/deploy/deploy.sh
 
 set -euo pipefail
 
