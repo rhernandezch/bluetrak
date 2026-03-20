@@ -115,48 +115,51 @@ sudo systemctl restart bluetrak
 
 The `.env` file should be readable only by the service user (`chmod 600`, owned by `bluetrak`). The setup script handles this automatically.
 
-## Deployment (Google Cloud e2)
+## Deployment (Google Cloud e2 + Docker Compose)
 
-Provision an e2 instance (Ubuntu 22.04+, x86_64) via the GCP Console or `gcloud`:
+The app runs as a Docker container managed by Compose. SQLite data is persisted in a named volume (`bluetrak-data`), so it survives container rebuilds.
+
+### 1. Provision the VM
 
 ```bash
 gcloud compute instances create bluetrak \
   --machine-type=e2-micro \
   --image-family=ubuntu-2204-lts \
   --image-project=ubuntu-os-cloud \
-  --zone=us-central1-a \
-  --tags=bluetrak
+  --zone=us-central1-a
 ```
 
-Then SSH in and run the one-time setup:
+### 2. Run the setup script
+
+SSH into the VM and run the setup script directly from the repo. Since the repo is private, authenticate first using a **GitHub Deploy Key** — the script generates one and pauses for you to add it:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/rhernandezch/bluetrak/main/deploy/setup.sh)
+# Download and run the setup script using your GitHub credentials (one-time)
+curl -sH "Authorization: token YOUR_PAT" \
+  https://raw.githubusercontent.com/rhernandezch/bluetrak/main/deploy/setup.sh | bash
 ```
 
-The script will pause mid-way and print an SSH public key. Before pressing Enter to continue, add that key as a **read-only Deploy Key** on GitHub:
+> **Getting a PAT:** GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → New token. The `repo` scope (read-only) is enough for a private repo.
 
-1. Go to **Settings → Deploy keys → Add deploy key** in the repository
-2. Paste the public key printed by the script
-3. Leave **Allow write access** unchecked
-4. Click **Add key**, then press Enter in the terminal to continue
+The script will:
+1. Install Docker
+2. Generate an SSH deploy key, print the public key, and **pause** — add it to GitHub at **Settings → Deploy keys** (read-only), then press Enter
+3. Clone the repo via SSH
+4. Copy `.env.example` to `.env`
 
-> **Why a deploy key?** The clone runs as `root` (via `sudo`), so credentials must live in `/root/.ssh/`. A deploy key is repo-scoped and read-only — narrower than a PAT and safer than reusing a personal SSH key.
-
-After setup completes:
+### 3. Configure and start
 
 ```bash
-# Edit secrets
-sudo nano /opt/bluetrak/.env
-
-# Check it's running
-sudo journalctl -u bluetrak -f
+nano ~/bluetrak/.env          # fill in Telegram credentials and review settings
+cd ~/bluetrak
+docker compose up -d --build  # build image and start
+docker compose logs -f        # tail logs
 ```
 
-To deploy updates:
+### Deploying updates
 
 ```bash
-bash /opt/bluetrak/deploy/deploy.sh
+bash ~/bluetrak/deploy/deploy.sh
 ```
 
 ## Development
