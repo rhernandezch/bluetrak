@@ -115,14 +115,37 @@ sudo systemctl restart bluetrak
 
 The `.env` file should be readable only by the service user (`chmod 600`, owned by `bluetrak`). The setup script handles this automatically.
 
-## Deployment (Oracle Cloud Free Tier)
+## Deployment (Google Cloud e2)
 
-Provision an Ampere A1 ARM instance (Ubuntu 22.04+), then:
+Provision an e2 instance (Ubuntu 22.04+, x86_64) via the GCP Console or `gcloud`:
 
 ```bash
-# One-time setup on the VM
-bash <(curl -s https://raw.githubusercontent.com/rhernandezch/bluetrak/main/deploy/setup.sh)
+gcloud compute instances create bluetrak \
+  --machine-type=e2-micro \
+  --image-family=ubuntu-2204-lts \
+  --image-project=ubuntu-os-cloud \
+  --zone=us-central1-a \
+  --tags=bluetrak
+```
 
+Then SSH in and run the one-time setup:
+
+```bash
+bash <(curl -s https://raw.githubusercontent.com/rhernandezch/bluetrak/main/deploy/setup.sh)
+```
+
+The script will pause mid-way and print an SSH public key. Before pressing Enter to continue, add that key as a **read-only Deploy Key** on GitHub:
+
+1. Go to **Settings → Deploy keys → Add deploy key** in the repository
+2. Paste the public key printed by the script
+3. Leave **Allow write access** unchecked
+4. Click **Add key**, then press Enter in the terminal to continue
+
+> **Why a deploy key?** The clone runs as `root` (via `sudo`), so credentials must live in `/root/.ssh/`. A deploy key is repo-scoped and read-only — narrower than a PAT and safer than reusing a personal SSH key.
+
+After setup completes:
+
+```bash
 # Edit secrets
 sudo nano /opt/bluetrak/.env
 
