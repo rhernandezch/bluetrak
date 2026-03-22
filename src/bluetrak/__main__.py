@@ -40,29 +40,29 @@ def _setup_file_logging(log_dir: Path) -> Path:
 
 def main() -> None:
     log_file = _setup_file_logging(Path("logs"))
-    logger.info("Bluetrak starting up")
-    logger.info("Log file (WARN+): %s", log_file)
-    logger.info("Database: %s", settings.db_path)
-    logger.info("Fetch interval: %d minutes", settings.fetch_interval_minutes)
-    logger.info("Alerts enabled: %s", settings.alerts_enabled)
+    logger.info("🚀 Bluetrak starting up")
+    logger.info("📝 Log file (WARN+): %s", log_file)
+    logger.info("🗄️  Database: %s", settings.db_path)
+    logger.info("⏱️  Fetch interval: %d minutes", settings.fetch_interval_minutes)
+    logger.info("🔔 Alerts enabled: %s", settings.alerts_enabled)
 
     db = Database(settings.db_path)
     db.connect()
 
     sources = [src() for src in ALL_SOURCES]
-    logger.info("Sources: %s", [s.name for s in sources])
+    logger.info("🌐 Sources: %s", [s.name for s in sources])
 
     # Run one fetch immediately on startup
-    logger.info("Running initial fetch...")
+    logger.info("⚡ Running initial fetch...")
     fetch_and_store(sources, db, settings, _SummaryState())
 
     # Start the scheduler loop
     scheduler = create_scheduler(sources, db, settings)
     try:
-        logger.info("Scheduler started — fetching every %d min", settings.fetch_interval_minutes)
+        logger.info("✅ Scheduler started — fetching every %d min", settings.fetch_interval_minutes)
         scheduler.start()
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Shutting down...")
+        logger.info("👋 Shutting down...")
     finally:
         scheduler.shutdown(wait=False)
         for source in sources:
