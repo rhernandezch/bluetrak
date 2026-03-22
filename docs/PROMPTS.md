@@ -21,3 +21,9 @@
 **Prompt:** Research and implement an intelligent alert system that detects local peaks in ARS/USD exchange rates, replacing the static threshold approach. Evaluated statistical (Bollinger, ARIMA, z-score), ML (Prophet, XGBoost), and heuristic (percentile, momentum) methods. Selected a 3-component ensemble: percentile rank, linear trend residual, and momentum plateau detection.
 
 **Outcome:** Implemented ensemble alert engine with cold-start strategy, regime change detection, and structured AlertSignal model. See `plans/02_PLAN.md` and `decisions/03_DECISIONS.md`.
+
+## Session 5: Per-source alert level control (2026-03-22)
+
+**Prompt:** Add per-source alert level env vars (off/normal/high) to control which real-time notifications get dispatched. DolarApp was too noisy; Roberto primarily wants Western Union alerts. Data collection and summaries should remain unaffected.
+
+**Outcome:** Added `BLUETRAK_ALERT_LEVEL_{SOURCE}` env vars with dispatch-level filtering. See `decisions/04_DECISIONS.md`.
