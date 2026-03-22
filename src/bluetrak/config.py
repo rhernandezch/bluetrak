@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
+from bluetrak.models import AlertLevel
+
 
 class Settings(BaseSettings):
     model_config = {"env_prefix": "BLUETRAK_", "env_file": ".env", "env_file_encoding": "utf-8"}
@@ -26,6 +28,16 @@ class Settings(BaseSettings):
     alert_percentile_threshold: float = 90.0  # Percentile rank to trigger alert (0-100)
     alert_percentile_window_days: int = 7  # Days of history for percentile calculation
     alert_trend_window_days: int = 14  # Days of history for linear trend fitting
+
+    # Per-source alert levels
+    alert_level_dolarapp: AlertLevel = AlertLevel.NORMAL
+    alert_level_western_union: AlertLevel = AlertLevel.NORMAL
+    alert_level_infodolar_ccl: AlertLevel = AlertLevel.NORMAL
+
+    def alert_level_for(self, source_name: str) -> AlertLevel:
+        """Return the configured alert level for a source, defaulting to NORMAL."""
+        field_name = f"alert_level_{source_name}"
+        return getattr(self, field_name, AlertLevel.NORMAL)
 
     @property
     def alerts_enabled(self) -> bool:

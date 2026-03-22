@@ -18,6 +18,14 @@ class Rate(BaseModel):
         return f"{self.source}: buy={self.buy_rate:.2f} sell={self.sell_rate:.2f}"
 
 
+class AlertLevel(StrEnum):
+    """Per-source alert notification level."""
+
+    OFF = "off"  # No real-time alerts (still fetches and appears in summaries)
+    NORMAL = "normal"  # Alert on both NORMAL and HIGH urgency
+    HIGH = "high"  # Only alert on HIGH urgency
+
+
 class AlertUrgency(StrEnum):
     NORMAL = "normal"
     HIGH = "high"
