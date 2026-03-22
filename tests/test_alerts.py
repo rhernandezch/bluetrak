@@ -14,7 +14,7 @@ from bluetrak.alerts.analysis import (
 from bluetrak.alerts.engine import _determine_maturity, evaluate_alerts
 from bluetrak.config import Settings
 from bluetrak.db import Database
-from bluetrak.models import AlertSignal, AlertUrgency, DataMaturity, Rate
+from bluetrak.models import AlertLevel, AlertSignal, AlertUrgency, DataMaturity, Rate
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -425,3 +425,29 @@ class TestDatabaseAnalysisMethods:
             assert db.count_distinct_changes("nonexistent") == 0
         finally:
             db.close()
+
+
+# ===========================================================================
+# Per-source alert level tests
+# ===========================================================================
+
+
+class TestAlertLevelFor:
+    def test_default_is_normal(self) -> None:
+        settings = Settings()
+        assert settings.alert_level_for("dolarapp") == AlertLevel.NORMAL
+        assert settings.alert_level_for("western_union") == AlertLevel.NORMAL
+        assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
+
+    def test_configured_levels(self) -> None:
+        settings = Settings(
+            alert_level_dolarapp=AlertLevel.OFF,
+            alert_level_western_union=AlertLevel.HIGH,
+        )
+        assert settings.alert_level_for("dolarapp") == AlertLevel.OFF
+        assert settings.alert_level_for("western_union") == AlertLevel.HIGH
+        assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
+
+    def test_unknown_source_defaults_to_normal(self) -> None:
+        settings = Settings()
+        assert settings.alert_level_for("unknown_source") == AlertLevel.NORMAL

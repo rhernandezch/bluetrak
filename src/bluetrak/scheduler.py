@@ -14,7 +14,7 @@ from bluetrak.alerts.telegram import send_telegram
 from bluetrak.alerts.webhook import send_webhook
 from bluetrak.config import Settings
 from bluetrak.db import Database
-from bluetrak.models import AlertSignal
+from bluetrak.models import AlertLevel, AlertSignal, AlertUrgency
 from bluetrak.sources.base import RateSource
 
 logger = logging.getLogger(__name__)
@@ -67,6 +67,11 @@ def fetch_and_store(
         state.add(signals)
         for signal in signals:
             if signal.should_alert:
+                level = settings.alert_level_for(signal.source)
+                if level == AlertLevel.OFF:
+                    continue
+                if level == AlertLevel.HIGH and signal.urgency != AlertUrgency.HIGH:
+                    continue
                 _dispatch(signal.format_message(), settings)
 
 
