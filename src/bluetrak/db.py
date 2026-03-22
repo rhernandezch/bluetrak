@@ -16,13 +16,41 @@ CREATE TABLE IF NOT EXISTS rates (
     source TEXT NOT NULL,
     buy_rate REAL NOT NULL,
     sell_rate REAL NOT NULL,
-    fetched_at TEXT NOT NULL,
-    raw_response TEXT DEFAULT ''
+    fetched_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_rates_source_fetched
     ON rates (source, fetched_at DESC);
 """
+
+_SQLITE_DROP_COLUMN_MIN = (3, 35, 0)
+
+
+def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    """Check whether a column exists in a table."""
+    cursor = conn.execute(f"PRAGMA table_info({table})")
+    return any(row[1] == column for row in cursor.fetchall())
+
+
+def _drop_column_legacy(conn: sqlite3.Connection) -> None:
+    """Drop raw_response by recreating the table (SQLite <3.35.0)."""
+    conn.executescript("""
+        BEGIN;
+        CREATE TABLE rates_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            buy_rate REAL NOT NULL,
+            sell_rate REAL NOT NULL,
+            fetched_at TEXT NOT NULL
+        );
+        INSERT INTO rates_new (id, source, buy_rate, sell_rate, fetched_at)
+            SELECT id, source, buy_rate, sell_rate, fetched_at FROM rates;
+        DROP TABLE rates;
+        ALTER TABLE rates_new RENAME TO rates;
+        CREATE INDEX IF NOT EXISTS idx_rates_source_fetched
+            ON rates (source, fetched_at DESC);
+        COMMIT;
+    """)
 
 
 class Database:
@@ -34,7 +62,25 @@ class Database:
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        self._run_migrations()
         logger.info("Database initialized at %s", self.db_path)
+
+    def _run_migrations(self) -> None:
+        """Run one-off migrations, skipping any that no longer apply."""
+        if not _has_column(self.conn, "rates", "raw_response"):
+            return
+
+        if sqlite3.sqlite_version_info >= _SQLITE_DROP_COLUMN_MIN:
+            self.conn.execute("ALTER TABLE rates DROP COLUMN raw_response")
+            self.conn.commit()
+        else:
+            logger.info(
+                "SQLite %s < 3.35.0 — using table-recreate to drop raw_response",
+                sqlite3.sqlite_version,
+            )
+            _drop_column_legacy(self.conn)
+
+        logger.info("Migration applied: dropped raw_response column")
 
     def close(self) -> None:
         if self._conn:
@@ -50,15 +96,14 @@ class Database:
     def save_rate(self, rate: Rate) -> None:
         self.conn.execute(
             """
-            INSERT INTO rates (source, buy_rate, sell_rate, fetched_at, raw_response)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO rates (source, buy_rate, sell_rate, fetched_at)
+            VALUES (?, ?, ?, ?)
             """,
             (
                 rate.source,
                 rate.buy_rate,
                 rate.sell_rate,
                 rate.fetched_at.isoformat(),
-                rate.raw_response,
             ),
         )
         self.conn.commit()
@@ -84,7 +129,6 @@ class Database:
                 buy_rate=row["buy_rate"],
                 sell_rate=row["sell_rate"],
                 fetched_at=datetime.fromisoformat(row["fetched_at"]),
-                raw_response=row["raw_response"],
             )
             for row in rows
         ]
@@ -105,7 +149,6 @@ class Database:
                 buy_rate=row["buy_rate"],
                 sell_rate=row["sell_rate"],
                 fetched_at=datetime.fromisoformat(row["fetched_at"]),
-                raw_response=row["raw_response"],
             )
             for row in rows
         ]
@@ -131,7 +174,6 @@ class Database:
             buy_rate=row["buy_rate"],
             sell_rate=row["sell_rate"],
             fetched_at=datetime.fromisoformat(row["fetched_at"]),
-            raw_response=row["raw_response"],
         )
 
     def get_hourly_rates(self, source: str, days: int) -> list[tuple[str, float]]:

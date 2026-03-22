@@ -1,7 +1,5 @@
 """Tests for exchange rate source parsers using mocked HTTP responses."""
 
-import json
-
 import httpx
 import respx
 
@@ -24,7 +22,6 @@ def test_dolarapp_fetch() -> None:
     assert rate.source == "dolarapp"
     assert rate.buy_rate == 1466.0
     assert rate.sell_rate == 1469.0
-    assert rate.raw_response == json.dumps(mock_response)
 
 
 @respx.mock
