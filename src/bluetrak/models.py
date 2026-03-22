@@ -54,25 +54,28 @@ class AlertSignal(BaseModel):
 
     def format_message(self) -> str:
         """Format a human-readable alert message."""
-        lines = [f"*{self.source}* sell rate *{self.sell_rate:.2f}* ARS/USD"]
+        lines = [f"🔔 *{self.source}* sell rate *{self.sell_rate:.2f}* ARS/USD"]
+        lines.append("")
 
         if self.percentile_rank is not None:
             lines.append(
-                f"• {self.percentile_rank:.0f}th percentile of the last "
-                f"{7} days (highest was {self.window_high:.2f})"
+                f"  📈 {self.percentile_rank:.0f}th percentile of the last "
+                f"{7} days _(highest was {self.window_high:.2f})_"
             )
 
         if self.trend_residual is not None and self.trend_predicted is not None:
-            lines.append(f"• {self.trend_residual:.2f} ARS above the 14-day trend")
+            lines.append(
+                f"  📐 *{self.trend_residual:+.2f}* ARS above the 14-day trend"
+            )
 
         if self.momentum_fading:
-            lines.append("• Momentum is flattening — rate has stopped increasing")
+            lines.append("  🔻 Momentum is flattening — rate has stopped increasing")
 
         if self.should_alert:
             lines.append("")
             if self.urgency == AlertUrgency.HIGH:
-                lines.append("⚡ This may be a good time to sell.")
+                lines.append("⚡ *This may be a good time to sell!*")
             else:
-                lines.append("This may be a good time to sell.")
+                lines.append("💡 _This may be a good time to sell._")
 
         return "\n".join(lines)

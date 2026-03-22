@@ -363,7 +363,8 @@ class TestAlertSignal:
         assert "dolarapp" in msg
         assert "1485.20" in msg
         assert "94th percentile" in msg
-        assert "22.00 ARS above" in msg
+        assert "+22.00" in msg
+        assert "ARS above" in msg
         assert "Momentum" in msg
         assert "sell" in msg.lower()
 

@@ -40,35 +40,40 @@ def format_summary(
         prev = prev_rates.get(name)
 
         if current is None:
-            rows.append(f"*{name}*   N/A")
+            rows.append(f"  ⚪ *{name}*  —  _N/A_")
             continue
 
         all_sells.extend(r.sell_rate for r in rates_12h.get(name, []))
 
         delta_str = _delta(current.sell_rate, prev.sell_rate if prev else None)
         rows.append(
-            f"*{name}*   sell {current.sell_rate:,.2f}   buy {current.buy_rate:,.2f}   {delta_str}"
+            f"  💱 *{name}*\n"
+            f"        sell *{current.sell_rate:,.2f}*   buy *{current.buy_rate:,.2f}*   {delta_str}"
         )
 
-    lines = [header, ""]
+    lines = [header]
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
     lines.extend(rows)
 
     if all_sells:
         lines.append("")
-        lines.append(f"12h range: {min(all_sells):,.2f} – {max(all_sells):,.2f}")
+        lines.append(
+            f"📉 12h range: *{min(all_sells):,.2f}* – *{max(all_sells):,.2f}*"
+        )
 
+    lines.append("")
     fired = [a for a in alerts if a.should_alert]
     if fired:
         alert_parts = []
         for a in fired:
             tag = " ⚡" if a.urgency == AlertUrgency.HIGH else ""
             alert_parts.append(f"{a.source}{tag}")
-        lines.append(f"Alerts: {', '.join(alert_parts)}")
+        lines.append(f"🔔 Alerts: {', '.join(alert_parts)}")
     else:
-        lines.append("Alerts: none")
+        lines.append("✅ Alerts: _none_")
 
     lines.append("")
-    lines.append("_Next summary in ~12h_")
+    lines.append("⏳ _Next summary in ~12h_")
 
     return "\n".join(lines)
 
@@ -76,8 +81,8 @@ def format_summary(
 def _delta(current: float, previous: float | None) -> str:
     """Format a sell-rate delta with direction arrow. '—' when no baseline."""
     if previous is None:
-        return "—"
+        return "🆕"
     diff = current - previous
-    arrow = "▲" if diff > 0 else ("▼" if diff < 0 else "►")
+    arrow = "🟢 ▲" if diff > 0 else ("🔴 ▼" if diff < 0 else "⚪ ▸")
     sign = "+" if diff > 0 else ""
     return f"{sign}{diff:,.2f} {arrow}"
