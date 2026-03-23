@@ -434,13 +434,14 @@ class TestDatabaseAnalysisMethods:
 
 class TestAlertLevelFor:
     def test_default_is_normal(self) -> None:
-        settings = Settings()
+        settings = Settings(_env_file=None)
         assert settings.alert_level_for("dolarapp") == AlertLevel.NORMAL
         assert settings.alert_level_for("western_union") == AlertLevel.NORMAL
         assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
 
     def test_configured_levels(self) -> None:
         settings = Settings(
+            _env_file=None,
             alert_level_dolarapp=AlertLevel.OFF,
             alert_level_western_union=AlertLevel.HIGH,
         )
@@ -449,5 +450,5 @@ class TestAlertLevelFor:
         assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
 
     def test_unknown_source_defaults_to_normal(self) -> None:
-        settings = Settings()
+        settings = Settings(_env_file=None)
         assert settings.alert_level_for("unknown_source") == AlertLevel.NORMAL
