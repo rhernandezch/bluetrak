@@ -27,3 +27,9 @@
 **Prompt:** Add per-source alert level env vars (off/normal/high) to control which real-time notifications get dispatched. DolarApp was too noisy; Roberto primarily wants Western Union alerts. Data collection and summaries should remain unaffected.
 
 **Outcome:** Added `BLUETRAK_ALERT_LEVEL_{SOURCE}` env vars with dispatch-level filtering. See `decisions/04_DECISIONS.md`.
+
+## Session 6: Every-change alert level for Western Union (2026-04-06)
+
+**Prompt:** I want to get alerts every time that Western Union changes, what would be the best way to achieve this with the current design?
+
+**Outcome:** Added `EVERY_CHANGE` alert level that bypasses ensemble analysis and notifies on any sell_rate change. See `decisions/05_DECISIONS.md`.

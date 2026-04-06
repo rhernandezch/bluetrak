@@ -14,7 +14,7 @@ from bluetrak.alerts.telegram import send_telegram
 from bluetrak.alerts.webhook import send_webhook
 from bluetrak.config import Settings
 from bluetrak.db import Database
-from bluetrak.models import AlertLevel, AlertSignal, AlertUrgency
+from bluetrak.models import AlertLevel, AlertSignal, AlertUrgency, Rate, format_rate_change_message
 from bluetrak.sources.base import RateSource
 
 logger = logging.getLogger(__name__)
@@ -62,14 +62,27 @@ def fetch_and_store(
         logger.warning("No rates fetched in this cycle")
         return
 
-    if settings.alerts_enabled:
-        signals = evaluate_alerts(fetched_rates, settings, db)
+    if not settings.alerts_enabled:
+        return
+
+    # Partition rates by alert mode
+    ensemble_rates = []
+    for rate in fetched_rates:
+        level = settings.alert_level_for(rate.source)
+        if level == AlertLevel.OFF:
+            continue
+        if level == AlertLevel.EVERY_CHANGE:
+            _handle_rate_change(rate, db, settings)
+            continue
+        ensemble_rates.append(rate)
+
+    # Ensemble evaluation for NORMAL/HIGH sources
+    if ensemble_rates:
+        signals = evaluate_alerts(ensemble_rates, settings, db)
         state.add(signals)
         for signal in signals:
             if signal.should_alert:
                 level = settings.alert_level_for(signal.source)
-                if level == AlertLevel.OFF:
-                    continue
                 if level == AlertLevel.HIGH and signal.urgency != AlertUrgency.HIGH:
                     continue
                 _dispatch(signal.format_message(), settings)
@@ -103,6 +116,24 @@ def send_summary(
         logger.info("12h summary sent")
     except Exception:
         logger.exception("Failed to send summary via Telegram")
+
+
+def _handle_rate_change(rate: Rate, db: Database, settings: Settings) -> None:
+    """Dispatch a notification if the sell rate changed from the previous reading."""
+    previous = db.get_rate_before(rate.source, rate.fetched_at)
+
+    if previous is not None and previous.sell_rate == rate.sell_rate:
+        logger.debug("No sell_rate change for %s (still %.2f)", rate.source, rate.sell_rate)
+        return
+
+    message = format_rate_change_message(rate.source, rate, previous)
+    _dispatch(message, settings)
+    logger.info(
+        "Rate change alert for %s: %.2f → %.2f",
+        rate.source,
+        previous.sell_rate if previous else 0,
+        rate.sell_rate,
+    )
 
 
 def _dispatch(message: str, settings: Settings) -> None:

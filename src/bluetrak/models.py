@@ -24,6 +24,7 @@ class AlertLevel(StrEnum):
     OFF = "off"  # No real-time alerts (still fetches and appears in summaries)
     NORMAL = "normal"  # Alert on both NORMAL and HIGH urgency
     HIGH = "high"  # Only alert on HIGH urgency
+    EVERY_CHANGE = "every_change"  # Alert whenever the sell rate changes
 
 
 class AlertUrgency(StrEnum):
@@ -87,3 +88,24 @@ class AlertSignal(BaseModel):
                 lines.append("💡 _This may be a good time to sell._")
 
         return "\n".join(lines)
+
+
+def format_rate_change_message(source: str, current: Rate, previous: Rate | None) -> str:
+    """Format a 'rate changed' notification message."""
+    lines = [f"📊 *{source}* rate updated"]
+    lines.append(f"  sell *{current.sell_rate:.2f}* ARS/USD")
+
+    if previous is not None:
+        diff = current.sell_rate - previous.sell_rate
+        arrow = "🟢 ▲" if diff > 0 else ("🔴 ▼" if diff < 0 else "⚪ ▸")
+        sign = "+" if diff > 0 else ""
+        lines.append(f"  {arrow} {sign}{diff:.2f} from {previous.sell_rate:.2f}")
+
+        buy_diff = current.buy_rate - previous.buy_rate
+        if buy_diff != 0:
+            buy_sign = "+" if buy_diff > 0 else ""
+            lines.append(f"  buy *{current.buy_rate:.2f}* ({buy_sign}{buy_diff:.2f})")
+    else:
+        lines.append("  🆕 _First rate recorded_")
+
+    return "\n".join(lines)

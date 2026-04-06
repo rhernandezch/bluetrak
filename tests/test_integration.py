@@ -15,7 +15,7 @@ import respx
 
 from bluetrak.config import Settings
 from bluetrak.db import Database
-from bluetrak.models import AlertUrgency, DataMaturity, Rate
+from bluetrak.models import AlertLevel, AlertUrgency, DataMaturity, Rate
 from bluetrak.scheduler import _SummaryState, fetch_and_store
 from bluetrak.sources.base import RateSource
 
@@ -920,3 +920,137 @@ class TestDatabaseRoundTrip:
         assert not errors, f"Cross-thread DB access failed: {errors[0]}"
         assert db.get_latest_rates()[0].sell_rate == 1450.0
         db.close()
+
+
+# ===========================================================================
+# 9. Every-Change Alert Level
+# ===========================================================================
+
+
+class _WUSource(RateSource):
+    """A controllable source using the western_union name for alert level tests."""
+
+    name = "western_union"
+
+    def __init__(self, rates: list[tuple[float, float]]) -> None:
+        super().__init__()
+        self._rates = rates
+        self._index = 0
+        self._fetch_time: datetime | None = None
+
+    def set_time(self, t: datetime) -> None:
+        self._fetch_time = t
+
+    def fetch(self) -> Rate:
+        buy, sell = self._rates[self._index]
+        self._index += 1
+        return Rate(
+            source=self.name,
+            buy_rate=buy,
+            sell_rate=sell,
+            fetched_at=self._fetch_time or datetime.now(),
+        )
+
+
+class TestEveryChangeAlertLevel:
+    """Tests for the EVERY_CHANGE alert level — dispatches on any sell_rate change."""
+
+    @respx.mock
+    def test_dispatches_on_rate_change(self, tmp_path: Path) -> None:
+        """When sell_rate changes, a notification is dispatched."""
+        db = _db(tmp_path)
+        try:
+            db.save_rate(Rate(
+                source="western_union", buy_rate=1400, sell_rate=1450,
+                fetched_at=datetime(2026, 4, 1, 12, 0),
+            ))
+
+            source = _WUSource([(1410, 1460)])
+            source.set_time(datetime(2026, 4, 1, 12, 15))
+
+            webhook_route = respx.post("https://hooks.example.com/test").mock(
+                return_value=httpx.Response(200)
+            )
+            settings = Settings(
+                webhook_url="https://hooks.example.com/test",
+                alert_level_western_union=AlertLevel.EVERY_CHANGE,
+            )
+            fetch_and_store([source], db, settings, _SummaryState())
+
+            assert webhook_route.called
+            body = webhook_route.calls[0].request.content.decode()
+            assert "1460.00" in body
+            assert "+10.00" in body
+        finally:
+            db.close()
+
+    @respx.mock
+    def test_silent_when_unchanged(self, tmp_path: Path) -> None:
+        """No dispatch when sell_rate is the same as previous."""
+        db = _db(tmp_path)
+        try:
+            db.save_rate(Rate(
+                source="western_union", buy_rate=1400, sell_rate=1450,
+                fetched_at=datetime(2026, 4, 1, 12, 0),
+            ))
+
+            source = _WUSource([(1400, 1450)])  # Same sell_rate
+            source.set_time(datetime(2026, 4, 1, 12, 15))
+
+            webhook_route = respx.post("https://hooks.example.com/test").mock(
+                return_value=httpx.Response(200)
+            )
+            settings = Settings(
+                webhook_url="https://hooks.example.com/test",
+                alert_level_western_union=AlertLevel.EVERY_CHANGE,
+            )
+            fetch_and_store([source], db, settings, _SummaryState())
+
+            assert not webhook_route.called
+        finally:
+            db.close()
+
+    @respx.mock
+    def test_dispatches_on_first_rate(self, tmp_path: Path) -> None:
+        """First-ever rate (no previous) triggers a notification."""
+        db = _db(tmp_path)
+        try:
+            source = _WUSource([(1400, 1450)])
+            webhook_route = respx.post("https://hooks.example.com/test").mock(
+                return_value=httpx.Response(200)
+            )
+            settings = Settings(
+                webhook_url="https://hooks.example.com/test",
+                alert_level_western_union=AlertLevel.EVERY_CHANGE,
+            )
+            fetch_and_store([source], db, settings, _SummaryState())
+
+            assert webhook_route.called
+            body = webhook_route.calls[0].request.content.decode()
+            assert "First rate recorded" in body
+        finally:
+            db.close()
+
+    @respx.mock
+    def test_skips_ensemble_evaluation(self, tmp_path: Path) -> None:
+        """EVERY_CHANGE sources are not evaluated by the ensemble engine."""
+        db = _db(tmp_path)
+        try:
+            source = _WUSource([(1600, 1650)])
+            webhook_route = respx.post("https://hooks.example.com/test").mock(
+                return_value=httpx.Response(200)
+            )
+            settings = Settings(
+                sell_rate_alert_above=1500,  # Would trigger cold-start alert
+                webhook_url="https://hooks.example.com/test",
+                alert_level_western_union=AlertLevel.EVERY_CHANGE,
+            )
+            fetch_and_store([source], db, settings, _SummaryState())
+
+            # Should dispatch the rate-change message, not the ensemble alert
+            assert webhook_route.called
+            body = webhook_route.calls[0].request.content.decode()
+            assert "rate updated" in body
+            assert "good time to sell" not in body
+        finally:
+            db.close()
