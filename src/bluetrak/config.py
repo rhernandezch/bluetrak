@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     alert_percentile_threshold: float = 90.0  # Percentile rank to trigger alert (0-100)
     alert_percentile_window_days: int = 7  # Days of history for percentile calculation
     alert_trend_window_days: int = 14  # Days of history for linear trend fitting
+    alert_arq_reactive_enabled: bool = True  # Use faster short-window ARQ alerts
+    alert_arq_reactive_window_hours: int = 6  # Raw-history window for ARQ reactivity
+    alert_arq_reactive_lookback: int = 4  # Recent samples to compare (~1h at 15-min fetches)
+    alert_arq_reactive_min_move_ars: float = 3.0  # Minimum ARS move for ARQ fast alerts
+    alert_arq_reactive_min_move_pct: float = 0.2  # Minimum percent move for ARQ fast alerts
 
     # Per-source alert levels
     alert_level_arq: AlertLevel = Field(

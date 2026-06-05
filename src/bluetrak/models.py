@@ -32,6 +32,11 @@ class AlertUrgency(StrEnum):
     HIGH = "high"
 
 
+class AlertKind(StrEnum):
+    SELL_OPPORTUNITY = "sell_opportunity"
+    DROP_WARNING = "drop_warning"
+
+
 class DataMaturity(StrEnum):
     """How much historical data is available for analysis."""
 
@@ -49,6 +54,7 @@ class AlertSignal(BaseModel):
     sell_rate: float
     should_alert: bool = False
     urgency: AlertUrgency = AlertUrgency.NORMAL
+    kind: AlertKind = AlertKind.SELL_OPPORTUNITY
     maturity: DataMaturity = DataMaturity.COLD
 
     # Component scores (None if not enough data)
@@ -56,15 +62,35 @@ class AlertSignal(BaseModel):
     trend_residual: float | None = None
     trend_residual_sigma: float | None = None  # residual expressed in std devs
     momentum_fading: bool | None = None
+    reactive_move: bool = False
+    price_dropping: bool = False
 
     # Context for the alert message
     window_high: float | None = None  # Highest rate in percentile window
     trend_predicted: float | None = None  # What the trend predicts
+    recent_change: float | None = None
+    recent_change_pct: float | None = None
+    recent_window_high: float | None = None
+    recent_window_low: float | None = None
 
     def format_message(self) -> str:
         """Format a human-readable alert message."""
-        lines = [f"🔔 *{self.source}* sell rate *{self.sell_rate:.2f}* ARS/USD"]
+        if self.kind == AlertKind.DROP_WARNING:
+            lines = [f"⚠️ *{self.source}* sell rate dropping: *{self.sell_rate:.2f}* ARS/USD"]
+        else:
+            lines = [f"🔔 *{self.source}* sell rate *{self.sell_rate:.2f}* ARS/USD"]
         lines.append("")
+
+        if self.reactive_move and self.recent_change is not None:
+            pct = f" ({self.recent_change_pct:+.2f}%)" if self.recent_change_pct is not None else ""
+            lines.append(f"  ⚡ Short-window move: *{self.recent_change:+.2f}* ARS{pct}")
+
+        if self.price_dropping and self.recent_window_high is not None:
+            drop = self.recent_window_high - self.sell_rate
+            lines.append(
+                f"  🔻 Down *{drop:.2f}* ARS from the recent high "
+                f"({self.recent_window_high:.2f})"
+            )
 
         if self.percentile_rank is not None:
             lines.append(
@@ -82,7 +108,9 @@ class AlertSignal(BaseModel):
 
         if self.should_alert:
             lines.append("")
-            if self.urgency == AlertUrgency.HIGH:
+            if self.kind == AlertKind.DROP_WARNING:
+                lines.append("⚠️ *Drop warning — selling conditions may be weakening.*")
+            elif self.urgency == AlertUrgency.HIGH:
                 lines.append("⚡ *This may be a good time to sell!*")
             else:
                 lines.append("💡 _This may be a good time to sell._")

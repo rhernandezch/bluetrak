@@ -40,6 +40,8 @@ The engine tracks how many distinct rate changes have been recorded to determine
 
 **Momentum plateau** — Checks whether earlier rate changes were positive but the latest readings are flat or negative. When this coincides with an alert trigger, urgency is elevated to **HIGH** — the rate may be peaking.
 
+**ARQ reactive alerts** — ARQ is evaluated with an additional short-window path using raw 15-minute samples. A fast upward move can trigger before the longer percentile+trend ensemble confirms it, and the first meaningful drop from a recent high sends a **drop warning**. This is enabled by default because ARQ behaves more like a volatile crypto market than a slow FX feed.
+
 ### Regime change detection
 
 If any single rate change exceeds 5% (e.g. a currency devaluation), the engine discards pre-change history and resets its analysis windows. This prevents old "normal" rates from suppressing alerts during a crisis.
@@ -78,6 +80,11 @@ All settings are environment variables with the `BLUETRAK_` prefix. See `.env.ex
 | `BLUETRAK_ALERT_PERCENTILE_THRESHOLD` | `90.0` | Percentile rank to trigger alert (0–100) |
 | `BLUETRAK_ALERT_PERCENTILE_WINDOW_DAYS` | `7` | Lookback window for percentile (days) |
 | `BLUETRAK_ALERT_TREND_WINDOW_DAYS` | `14` | Lookback window for trend fitting (days) |
+| `BLUETRAK_ALERT_ARQ_REACTIVE_ENABLED` | `true` | Enable faster ARQ spike/drop alerts |
+| `BLUETRAK_ALERT_ARQ_REACTIVE_WINDOW_HOURS` | `6` | Raw ARQ lookback window |
+| `BLUETRAK_ALERT_ARQ_REACTIVE_LOOKBACK` | `4` | Recent samples to compare (~1h at 15m fetches) |
+| `BLUETRAK_ALERT_ARQ_REACTIVE_MIN_MOVE_ARS` | `3.0` | Minimum ARS move for ARQ fast alerts |
+| `BLUETRAK_ALERT_ARQ_REACTIVE_MIN_MOVE_PCT` | `0.2` | Minimum percent move for ARQ fast alerts |
 | `BLUETRAK_SELL_RATE_ALERT_ABOVE` | `0` (disabled) | Legacy: simple rate threshold fallback |
 
 Alerts are disabled when no delivery channel is configured (i.e. no Telegram token+chat or webhook URL).

@@ -199,6 +199,19 @@ class Database:
         ).fetchall()
         return [(row["fetched_at"], row["sell_rate"]) for row in rows]
 
+    def get_sell_rates_since(self, source: str, since: datetime) -> list[tuple[str, float]]:
+        """Get raw sell rates for a source since a given time, oldest first."""
+        rows = self.conn.execute(
+            """
+            SELECT fetched_at, sell_rate FROM rates
+            WHERE source = ?
+              AND fetched_at >= ?
+            ORDER BY fetched_at ASC
+            """,
+            (source, since.isoformat()),
+        ).fetchall()
+        return [(row["fetched_at"], row["sell_rate"]) for row in rows]
+
     def count_distinct_changes(self, source: str) -> int:
         """Count the number of times the sell_rate actually changed for a source.
 

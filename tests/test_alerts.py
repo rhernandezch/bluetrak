@@ -7,15 +7,17 @@ import numpy as np
 import pytest
 
 from bluetrak.alerts.analysis import (
+    crossed_recent_drop_threshold,
     momentum_plateau,
     percentile_rank,
     preprocess_rates,
+    short_window_move,
     trend_residual,
 )
 from bluetrak.alerts.engine import _determine_maturity, evaluate_alerts
 from bluetrak.config import Settings
 from bluetrak.db import Database
-from bluetrak.models import AlertLevel, AlertSignal, AlertUrgency, DataMaturity, Rate
+from bluetrak.models import AlertKind, AlertLevel, AlertSignal, AlertUrgency, DataMaturity, Rate
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -151,6 +153,37 @@ class TestMomentumPlateau:
     def test_too_few_points(self) -> None:
         rates = np.array([100.0, 105.0])
         assert momentum_plateau(rates) is False
+
+
+class TestReactiveMoves:
+    def test_short_window_move(self) -> None:
+        rates = np.array([100.0, 101.0, 102.0, 106.0, 108.0])
+        change, pct = short_window_move(rates, lookback=3)
+        assert change == 7.0
+        assert pct == pytest.approx(6.93, rel=0.01)
+
+    def test_crossed_recent_drop_threshold(self) -> None:
+        rates = np.array([1500.0, 1504.0, 1508.0, 1510.0, 1509.0, 1506.0])
+        crossed, drop, pct, high = crossed_recent_drop_threshold(
+            rates,
+            lookback=5,
+            min_drop_abs=3.0,
+            min_drop_pct=0.2,
+        )
+        assert crossed
+        assert drop == 4.0
+        assert pct == pytest.approx(0.265, rel=0.01)
+        assert high == 1510.0
+
+    def test_drop_threshold_does_not_repeat_after_crossing(self) -> None:
+        rates = np.array([1500.0, 1510.0, 1506.0, 1502.0])
+        crossed, _, _, _ = crossed_recent_drop_threshold(
+            rates,
+            lookback=4,
+            min_drop_abs=3.0,
+            min_drop_pct=0.2,
+        )
+        assert not crossed
 
 
 # ===========================================================================
@@ -342,6 +375,92 @@ class TestEvaluateAlertsEnsemble:
             db.close()
 
 
+class TestEvaluateArqReactiveAlerts:
+    def test_arq_fast_upward_move_triggers_before_ensemble_confirmation(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        db = _db(tmp_path)
+        try:
+            now = datetime.now()
+            rates = [1500.0, 1500.5, 1501.0, 1502.0, 1506.0]
+            _populate_db(
+                db,
+                "arq",
+                rates,
+                start=now - timedelta(minutes=15 * (len(rates) - 1)),
+            )
+            settings = Settings(
+                sell_rate_alert_above=0,
+                alert_arq_reactive_min_move_ars=3.0,
+                alert_arq_reactive_min_move_pct=0.2,
+            )
+
+            signals = evaluate_alerts([_rate("arq", 1506.0, now)], settings, db)
+            signal = signals[0]
+
+            assert signal.should_alert
+            assert signal.urgency == AlertUrgency.HIGH
+            assert signal.reactive_move
+            assert signal.kind == AlertKind.SELL_OPPORTUNITY
+            assert signal.recent_change is not None
+            assert signal.recent_change >= 3.0
+        finally:
+            db.close()
+
+    def test_arq_drop_from_recent_high_triggers_drop_warning(self, tmp_path: Path) -> None:
+        db = _db(tmp_path)
+        try:
+            now = datetime.now()
+            rates = [1500.0, 1504.0, 1508.0, 1510.0, 1509.0, 1506.0]
+            _populate_db(
+                db,
+                "arq",
+                rates,
+                start=now - timedelta(minutes=15 * (len(rates) - 1)),
+            )
+            settings = Settings(
+                sell_rate_alert_above=0,
+                alert_arq_reactive_min_move_ars=3.0,
+                alert_arq_reactive_min_move_pct=0.2,
+            )
+
+            signals = evaluate_alerts([_rate("arq", 1506.0, now)], settings, db)
+            signal = signals[0]
+
+            assert signal.should_alert
+            assert signal.urgency == AlertUrgency.HIGH
+            assert signal.kind == AlertKind.DROP_WARNING
+            assert signal.price_dropping
+            assert signal.recent_window_high == 1510.0
+        finally:
+            db.close()
+
+    def test_reactive_path_is_arq_only(self, tmp_path: Path) -> None:
+        db = _db(tmp_path)
+        try:
+            now = datetime.now()
+            rates = [1500.0, 1500.5, 1501.0, 1502.0, 1506.0]
+            _populate_db(
+                db,
+                "western_union",
+                rates,
+                start=now - timedelta(minutes=15 * (len(rates) - 1)),
+            )
+            settings = Settings(
+                sell_rate_alert_above=0,
+                alert_arq_reactive_min_move_ars=3.0,
+                alert_arq_reactive_min_move_pct=0.2,
+            )
+
+            signals = evaluate_alerts([_rate("western_union", 1506.0, now)], settings, db)
+
+            assert not signals[0].should_alert
+            assert not signals[0].reactive_move
+        finally:
+            db.close()
+
+
 # ===========================================================================
 # AlertSignal model tests
 # ===========================================================================
@@ -378,6 +497,25 @@ class TestAlertSignal:
         msg = signal.format_message()
         assert "test" in msg
         assert "1500.00" in msg
+
+    def test_format_message_drop_warning(self) -> None:
+        signal = AlertSignal(
+            source="arq",
+            sell_rate=1506.0,
+            should_alert=True,
+            urgency=AlertUrgency.HIGH,
+            kind=AlertKind.DROP_WARNING,
+            reactive_move=True,
+            price_dropping=True,
+            recent_change=-4.0,
+            recent_change_pct=-0.26,
+            recent_window_high=1510.0,
+        )
+        msg = signal.format_message()
+        assert "dropping" in msg
+        assert "Drop warning" in msg
+        assert "Down *4.00*" in msg
+        assert "-4.00" in msg
 
 
 # ===========================================================================
@@ -417,6 +555,25 @@ class TestDatabaseAnalysisMethods:
                 ))
             changes = db.count_distinct_changes("test")
             assert changes == 3  # 100→101, 101→102, 102→103
+        finally:
+            db.close()
+
+    def test_get_sell_rates_since(self, tmp_path: Path) -> None:
+        db = _db(tmp_path)
+        try:
+            now = datetime.now()
+            rates = [100.0, 101.0, 102.0]
+            _populate_db(
+                db,
+                "test",
+                rates,
+                start=now - timedelta(hours=2),
+                interval_minutes=60,
+            )
+
+            recent = db.get_sell_rates_since("test", now - timedelta(minutes=90))
+
+            assert [rate for _, rate in recent] == [101.0, 102.0]
         finally:
             db.close()
 
