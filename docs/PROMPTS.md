@@ -38,4 +38,6 @@
 
 **Prompt:** DolarApp is now named ARQ. Let's rename that everywhere.
 
-**Outcome:** Rename pending. See `plans/03_PLAN.md` and `decisions/06_DECISIONS.md`.
+**Outcome:** Renamed the source, config, tests, and user-facing docs to ARQ while
+keeping legacy alert-env compatibility. See `plans/03_PLAN.md` and
+`decisions/06_DECISIONS.md`.

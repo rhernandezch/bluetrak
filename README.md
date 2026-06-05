@@ -4,7 +4,7 @@ USD/ARS exchange rate tracker. Fetches rates from multiple sources on a schedule
 
 ## Sources
 
-- **DolarApp** — ARQ Finance API (GET + JSON)
+- **ARQ** — ARQ Finance API (GET + JSON)
 - **Western Union** — Price catalog API (POST + JSON)
 - **infodolar.com** — CCL rate (HTML scraping)
 
@@ -47,7 +47,7 @@ If any single rate change exceeds 5% (e.g. a currency devaluation), the engine d
 ### Alert message example
 
 ```
-*dolarapp* sell rate *1485.20* ARS/USD
+*arq* sell rate *1485.20* ARS/USD
 • 94th percentile of the last 7 days (highest was 1491.00)
 • 22.00 ARS above the 14-day trend
 • Momentum is flattening — rate has stopped increasing

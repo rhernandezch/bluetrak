@@ -3,12 +3,12 @@
 import httpx
 import respx
 
-from bluetrak.sources.dolarapp import DolarAppSource
+from bluetrak.sources.arq import ArqSource
 from bluetrak.sources.western_union import WesternUnionSource
 
 
 @respx.mock
-def test_dolarapp_fetch() -> None:
+def test_arq_fetch() -> None:
     mock_response = [
         {"book": "usdc_ars", "bid": "1466.0", "ask": "1469.0", "date": "2026-03-19T12:00:00"}
     ]
@@ -16,10 +16,10 @@ def test_dolarapp_fetch() -> None:
         return_value=httpx.Response(200, json=mock_response)
     )
 
-    source = DolarAppSource()
+    source = ArqSource()
     rate = source.fetch()
 
-    assert rate.source == "dolarapp"
+    assert rate.source == "arq"
     assert rate.buy_rate == 1469.0
     assert rate.sell_rate == 1466.0
 

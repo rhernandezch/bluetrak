@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from bluetrak.alerts.analysis import (
     momentum_plateau,
@@ -349,7 +350,7 @@ class TestEvaluateAlertsEnsemble:
 class TestAlertSignal:
     def test_format_message_basic(self) -> None:
         signal = AlertSignal(
-            source="dolarapp",
+            source="arq",
             sell_rate=1485.20,
             should_alert=True,
             percentile_rank=94.0,
@@ -360,7 +361,7 @@ class TestAlertSignal:
             urgency=AlertUrgency.HIGH,
         )
         msg = signal.format_message()
-        assert "dolarapp" in msg
+        assert "arq" in msg
         assert "1485.20" in msg
         assert "94th percentile" in msg
         assert "+22.00" in msg
@@ -435,19 +436,24 @@ class TestDatabaseAnalysisMethods:
 class TestAlertLevelFor:
     def test_default_is_normal(self) -> None:
         settings = Settings(_env_file=None)
-        assert settings.alert_level_for("dolarapp") == AlertLevel.NORMAL
+        assert settings.alert_level_for("arq") == AlertLevel.NORMAL
         assert settings.alert_level_for("western_union") == AlertLevel.NORMAL
         assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
 
     def test_configured_levels(self) -> None:
         settings = Settings(
             _env_file=None,
-            alert_level_dolarapp=AlertLevel.OFF,
+            alert_level_arq=AlertLevel.OFF,
             alert_level_western_union=AlertLevel.HIGH,
         )
-        assert settings.alert_level_for("dolarapp") == AlertLevel.OFF
+        assert settings.alert_level_for("arq") == AlertLevel.OFF
         assert settings.alert_level_for("western_union") == AlertLevel.HIGH
         assert settings.alert_level_for("infodolar_ccl") == AlertLevel.NORMAL
+
+    def test_legacy_arq_alert_level_env_var(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("BLUETRAK_ALERT_LEVEL_DOLARAPP", "off")
+        settings = Settings(_env_file=None)
+        assert settings.alert_level_for("arq") == AlertLevel.OFF
 
     def test_unknown_source_defaults_to_normal(self) -> None:
         settings = Settings(_env_file=None)

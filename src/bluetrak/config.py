@@ -2,13 +2,19 @@
 
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 from bluetrak.models import AlertLevel
 
 
 class Settings(BaseSettings):
-    model_config = {"env_prefix": "BLUETRAK_", "env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_prefix": "BLUETRAK_",
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "populate_by_name": True,
+    }
 
     # Database
     db_path: Path = Path("bluetrak.db")
@@ -30,7 +36,14 @@ class Settings(BaseSettings):
     alert_trend_window_days: int = 14  # Days of history for linear trend fitting
 
     # Per-source alert levels
-    alert_level_dolarapp: AlertLevel = AlertLevel.NORMAL
+    alert_level_arq: AlertLevel = Field(
+        default=AlertLevel.NORMAL,
+        validation_alias=AliasChoices(
+            "alert_level_arq",
+            "BLUETRAK_ALERT_LEVEL_ARQ",
+            "BLUETRAK_ALERT_LEVEL_DOLARAPP",
+        ),
+    )
     alert_level_western_union: AlertLevel = AlertLevel.NORMAL
     alert_level_infodolar_ccl: AlertLevel = AlertLevel.NORMAL
 
