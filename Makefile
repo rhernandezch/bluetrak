@@ -1,4 +1,4 @@
-.PHONY: run test test-integration lint typecheck fmt check test-telegram build
+.PHONY: run test test-integration lint typecheck fmt check test-telegram build up down logs
 
 # ── Development ─────────────────────────────────────────────────────────────
 
@@ -31,3 +31,12 @@ test-telegram:
 
 build:
 	docker build -t bluetrak .
+
+up:
+	docker compose up -d
+
+down:
+	docker compose down
+
+logs:
+	docker compose logs -f
