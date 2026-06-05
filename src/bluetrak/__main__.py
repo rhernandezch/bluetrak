@@ -8,6 +8,7 @@ from bluetrak.config import settings
 from bluetrak.db import Database
 from bluetrak.scheduler import _SummaryState, create_scheduler, fetch_and_store
 from bluetrak.sources import ALL_SOURCES
+from bluetrak.sources.base import RateSource
 
 _LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 _LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -49,7 +50,7 @@ def main() -> None:
     db = Database(settings.db_path)
     db.connect()
 
-    sources = [src() for src in ALL_SOURCES]
+    sources: list[RateSource] = [src() for src in ALL_SOURCES]
     logger.info("🌐 Sources: %s", [s.name for s in sources])
 
     # Run one fetch immediately on startup

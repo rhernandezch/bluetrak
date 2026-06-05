@@ -7,6 +7,7 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from bluetrak.models import Rate
 from bluetrak.sources.base import RateSource
@@ -43,7 +44,7 @@ class InfoDolarSource(RateSource):
 
         for ccl_element in soup.find_all(string=ccl_pattern):
             row = ccl_element.find_parent("tr")
-            if row is None:
+            if not isinstance(row, Tag):
                 continue
 
             rate_values = self._extract_rates_from_container(row)
@@ -56,13 +57,13 @@ class InfoDolarSource(RateSource):
             "The page structure may have changed."
         )
 
-    def _extract_rates_from_container(self, container: object) -> list[float]:
+    def _extract_rates_from_container(self, container: Tag) -> list[float]:
         """Extract numeric rate values from an HTML container."""
         rates: list[float] = []
 
         # Find elements that look like rate values (numbers with optional decimals)
         # Common patterns: "$1,480.50", "1480,50", "1.480,50"
-        text = container.get_text(separator=" ")  # type: ignore[union-attr]
+        text = container.get_text(separator=" ")
         # Match Argentine number format: 1.480,50 or 1480,50
         matches = re.findall(r"(\d{1,2}\.?\d{3}(?:,\d{1,2})?)", text)
 

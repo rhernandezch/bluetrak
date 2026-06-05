@@ -4,9 +4,9 @@ import logging
 import threading
 from datetime import UTC, datetime, timedelta
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.schedulers.blocking import BlockingScheduler  # type: ignore[import-untyped]
+from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
 
 from bluetrak.alerts.engine import evaluate_alerts
 from bluetrak.alerts.summary import format_summary

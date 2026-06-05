@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class RateSource(abc.ABC):
     """Base class for all exchange rate fetchers."""
 
-    name: str  # e.g., "dolarapp", "western_union", "infodolar_ccl"
+    name: str  # e.g., "arq", "western_union", "infodolar_ccl"
 
     def __init__(self) -> None:
         self.client = httpx.Client(

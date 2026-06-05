@@ -1,4 +1,4 @@
-"""DolarApp / ARQ Finance exchange rate source.
+"""ARQ Finance exchange rate source.
 
 Simple GET endpoint returning JSON with bid/ask rates for ARS.
 """
@@ -10,14 +10,14 @@ from bluetrak.sources.base import RateSource
 
 logger = logging.getLogger(__name__)
 
-DOLARAPP_URL = "https://api.dolarapp.com/v1/tickers?currencies=ARS"
+ARQ_URL = "https://api.dolarapp.com/v1/tickers?currencies=ARS"
 
 
-class DolarAppSource(RateSource):
-    name = "dolarapp"
+class ArqSource(RateSource):
+    name = "arq"
 
     def fetch(self) -> Rate:
-        resp = self.client.get(DOLARAPP_URL)
+        resp = self.client.get(ARQ_URL)
         resp.raise_for_status()
         data = resp.json()
 

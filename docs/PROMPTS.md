@@ -33,3 +33,11 @@
 **Prompt:** I want to get alerts every time that Western Union changes, what would be the best way to achieve this with the current design?
 
 **Outcome:** Added `EVERY_CHANGE` alert level that bypasses ensemble analysis and notifies on any sell_rate change. See `decisions/05_DECISIONS.md`.
+
+## Session 7: DolarApp renamed to ARQ (2026-06-04)
+
+**Prompt:** DolarApp is now named ARQ. Let's rename that everywhere.
+
+**Outcome:** Renamed the source, config, tests, and user-facing docs to ARQ while
+keeping legacy alert-env compatibility. See `plans/03_PLAN.md` and
+`decisions/06_DECISIONS.md`.
