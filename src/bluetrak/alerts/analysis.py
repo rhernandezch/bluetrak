@@ -128,3 +128,56 @@ def momentum_plateau(
     latest_flat_or_down = float(np.mean(latest)) <= 0
 
     return earlier_positive and latest_flat_or_down
+
+
+def short_window_move(
+    rates: NDArray[np.float64],
+    lookback: int = 4,
+) -> tuple[float, float]:
+    """Return absolute and percent change over the latest short window."""
+    if len(rates) < 2:
+        return 0.0, 0.0
+
+    start_idx = max(0, len(rates) - lookback - 1)
+    start = float(rates[start_idx])
+    end = float(rates[-1])
+    change = end - start
+    pct = change / start * 100 if start != 0 else 0.0
+
+    return change, pct
+
+
+def crossed_recent_drop_threshold(
+    rates: NDArray[np.float64],
+    lookback: int = 8,
+    min_drop_abs: float = 3.0,
+    min_drop_pct: float = 0.2,
+) -> tuple[bool, float, float, float]:
+    """Detect the first meaningful drop from a recent high.
+
+    Returns:
+        (crossed, drop_abs, drop_pct, recent_high)
+        drop_abs is positive when the current rate is below the recent high.
+    """
+    if len(rates) < 3:
+        return False, 0.0, 0.0, 0.0
+
+    window_start = max(0, len(rates) - lookback - 1)
+    window = rates[window_start:]
+    current = float(window[-1])
+    previous = float(window[-2])
+    latest_change = current - previous
+
+    high_before_current = float(np.max(window[:-1]))
+    current_drop = high_before_current - current
+    current_drop_pct = current_drop / high_before_current * 100 if high_before_current else 0.0
+
+    high_before_previous = float(np.max(window[:-2])) if len(window) > 2 else previous
+    previous_drop = high_before_previous - previous
+    previous_drop_pct = previous_drop / high_before_previous * 100 if high_before_previous else 0.0
+
+    current_meets = current_drop >= min_drop_abs and current_drop_pct >= min_drop_pct
+    previous_met = previous_drop >= min_drop_abs and previous_drop_pct >= min_drop_pct
+    crossed = latest_change < 0 and current_meets and not previous_met
+
+    return crossed, current_drop, current_drop_pct, high_before_current
