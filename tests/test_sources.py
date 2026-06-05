@@ -20,8 +20,8 @@ def test_dolarapp_fetch() -> None:
     rate = source.fetch()
 
     assert rate.source == "dolarapp"
-    assert rate.buy_rate == 1466.0
-    assert rate.sell_rate == 1469.0
+    assert rate.buy_rate == 1469.0
+    assert rate.sell_rate == 1466.0
 
 
 @respx.mock

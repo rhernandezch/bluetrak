@@ -26,7 +26,7 @@ class DolarAppSource(RateSource):
 
         return Rate(
             source=self.name,
-            buy_rate=float(ars_ticker["bid"]),
-            sell_rate=float(ars_ticker["ask"]),
+            buy_rate=float(ars_ticker["ask"]),
+            sell_rate=float(ars_ticker["bid"]),
             fetched_at=self._now(),
         )
