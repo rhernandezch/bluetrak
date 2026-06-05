@@ -48,7 +48,7 @@
 
 - Interview me in detail using the AskUserQuestion tool for any needed design decisions or
 missing information.
-- For an greenfield project, create a Makefile with the most used and helpful commands.
+- For a greenfield project, create a Makefile with the most used and helpful commands.
 - If there's already a Makefile, add commands when they're helpful.
 
 ## PR conventions
